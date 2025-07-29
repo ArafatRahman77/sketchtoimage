@@ -1,0 +1,4 @@
+1)Use PyCharm
+2)All packages should be installed first
+3)python app.py(RUN in terminal to run the server)
+4)Ctrl + C (To stop running server)

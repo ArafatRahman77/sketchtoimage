@@ -1,0 +1,114 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sketch to Image Generator</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f8f9fa; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .container { background-color: #ffffff; padding: 40px; border-radius: 12px; box-shadow: 0 6px 15px rgba(0, 0, 0, 0.1); max-width: 500px; width: 100%; text-align: center; }
+        h1 { margin-bottom: 20px; color: #343a40; font-size: 24px; font-weight: bold; }
+        input[type="file"] { padding: 10px; border: 2px dashed #007bff; border-radius: 6px; background-color: #e9ecef; cursor: pointer; width: 100%; margin-bottom: 20px; }
+        input[type="file"]::-webkit-file-upload-button { visibility: hidden; }
+        input[type="file"]::before { content: 'Choose a Sketch...'; display: inline-block; background: #007bff; color: white; padding: 10px 20px; border-radius: 5px; cursor: pointer; }
+        button { background-color: #28a745; color: white; padding: 12px 25px; border: none; border-radius: 30px; font-size: 16px; cursor: pointer; transition: background-color 0.3s ease; box-shadow: 0 4px 10px rgba(40, 167, 69, 0.2); margin-bottom: 20px; }
+        button:hover { background-color: #218838; }
+        .image-preview, .generated-image { margin-top: 20px; text-align: center; }
+        .image-preview img, .generated-image img { max-width: 250px; max-height: 250px; border-radius: 10px; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1); }
+        .show-btn { background-color: #007bff; color: white; padding: 12px 25px; border: none; border-radius: 30px; font-size: 16px; cursor: pointer; transition: background-color 0.3s ease; box-shadow: 0 4px 10px rgba(0, 123, 255, 0.2); }
+        .show-btn:hover { background-color: #0056b3; }
+        .download-btn { background-color: #ffc107; color: white; padding: 10px 20px; border: none; border-radius: 5px; font-size: 14px; cursor: pointer; transition: background-color 0.3s ease; }
+        .download-btn:hover { background-color: #e0a800; }
+        .reset-btn { background-color: #dc3545; color: white; padding: 10px 20px; border: none; border-radius: 5px; font-size: 14px; cursor: pointer; transition: background-color 0.3s ease; margin-top: 10px; }
+        .reset-btn:hover { background-color: #c82333; }
+        .progress { display: none; background-color: #e9ecef; border-radius: 5px; overflow: hidden; margin-top: 20px; }
+        .progress-bar { width: 0; height: 20px; background-color: #28a745; transition: width 0.3s ease; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1><i class="fas fa-paint-brush"></i> Sketch to Image Generator</h1>
+        <form id="upload-form" enctype="multipart/form-data">
+            <input type="file" id="image-upload" name="image" accept="image/*" required>
+            <button type="button" id="upload-button"><i class="fas fa-upload"></i> Upload Sketch</button>
+        </form>
+        <div class="image-preview" id="image-preview">
+            <h3>Uploaded Sketch:</h3>
+            <img id="uploaded-image" src="#" alt="Uploaded Sketch" style="display: none;">
+        </div>
+        <button type="button" id="generate-button" class="show-btn" style="display: none;"><i class="fas fa-eye"></i> Show Image</button>
+        <div class="progress" id="progress">
+            <div class="progress-bar" id="progress-bar"></div>
+        </div>
+        <div class="generated-image" id="generated-image" style="display: none;">
+            <h3>Generated Image:</h3>
+            <img id="output-image" src="#" alt="Generated Image">
+            <a id="download-link" href="#" download="generated_image.png">
+                <button class="download-btn"><i class="fas fa-download"></i> Download Image</button>
+            </a>
+            <button class="reset-btn" id="reset-button"><i class="fas fa-redo-alt"></i> Reset</button>
+        </div>
+    </div>
+    <script>
+        document.getElementById('upload-button').addEventListener('click', function() {
+            const imageUpload = document.getElementById('image-upload');
+            if (imageUpload.files.length > 0) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    document.getElementById('uploaded-image').src = e.target.result;
+                    document.getElementById('uploaded-image').style.display = 'block';
+                    document.getElementById('generate-button').style.display = 'block';
+                };
+                reader.readAsDataURL(imageUpload.files[0]);
+            } else {
+                alert('Please upload a sketch.');
+            }
+        });
+
+        document.getElementById('generate-button').addEventListener('click', function() {
+            const formData = new FormData();
+            formData.append('image', document.getElementById('image-upload').files[0]);
+            document.getElementById('progress').style.display = 'block';
+            const progressBar = document.getElementById('progress-bar');
+            progressBar.style.width = '0%';
+            fetch('/generate', {
+                method: 'POST',
+                body: formData,
+                onprogress: function(event) {
+                    if (event.lengthComputable) {
+                        const percentComplete = (event.loaded / event.total) * 100;
+                        progressBar.style.width = percentComplete + '%';
+                    }
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    alert(data.error);
+                } else {
+                    const outputImage = document.getElementById('output-image');
+                    outputImage.src = 'data:image/png;base64,' + data.image;
+                    document.getElementById('generated-image').style.display = 'block';
+                    const downloadLink = document.getElementById('download-link');
+                    downloadLink.href = outputImage.src;
+                    progressBar.style.width = '100%';
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+            });
+        });
+
+        document.getElementById('reset-button').addEventListener('click', function() {
+            document.getElementById('image-upload').value = '';
+            document.getElementById('uploaded-image').style.display = 'none';
+            document.getElementById('generate-button').style.display = 'none';
+            document.getElementById('generated-image').style.display = 'none';
+            document.getElementById('progress').style.display = 'none';
+            document.getElementById('progress-bar').style.width = '0%';
+        });
+    </script>
+</body>
+</html>
